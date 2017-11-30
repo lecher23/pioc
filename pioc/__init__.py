@@ -1,8 +1,28 @@
 # coding: utf-8
 
 import logging
-import tornado.gen
 from functools import wraps
+
+try:
+    import tornado.gen
+
+
+    def default_require_co(cls, *services):
+
+        def outer(func):
+            @tornado.gen.coroutine
+            @wraps(func)
+            def inner(*args, **kwargs):
+                kwargs.update(cls.process_dependency(*services))
+                ret = yield func(*args, **kwargs)
+                raise tornado.gen.Return(ret)
+
+            return inner
+
+        return outer
+except ImportError:
+    def default_require_co(cls, *services):
+        raise RuntimeError('require tornado!')
 
 
 class PIOC(object):
@@ -51,20 +71,7 @@ class PIOC(object):
 
         return outer
 
-    @classmethod
-    def require_co(cls, *services):
-
-        def outer(func):
-            @tornado.gen.coroutine
-            @wraps(func)
-            def inner(*args, **kwargs):
-                kwargs.update(cls.process_dependency(*services))
-                ret = yield func(*args, **kwargs)
-                raise tornado.gen.Return(ret)
-
-            return inner
-
-        return outer
+    require_co = classmethod(default_require_co)
 
     @classmethod
     def destroy(cls):
@@ -73,3 +80,24 @@ class PIOC(object):
             exit_func()
         cls._objects = {}
 
+
+if __name__ == '__main__':
+    @PIOC.service('test_service')
+    class A(object):
+        def __init__(self):
+            self.val = 0
+
+
+    @PIOC.require('test_service')
+    def do_test(test_service=None):
+        test_service.val = 1
+
+
+    @PIOC.require('test_service')
+    def print_test(test_service=None):
+        print test_service.val
+
+
+    print_test()
+    do_test()
+    print_test()
