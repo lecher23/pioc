@@ -93,22 +93,32 @@ class PIOC(object):
 
 
 if __name__ == '__main__':
-    @PIOC.service('test_service')
+    @PIOC.service('first_service')
     class A(object):
         def __init__(self):
             self.val = 0
 
+    @PIOC.service('second_service', 'first_service')
+    class B(object):
+        def __init__(self, first_service=None):
+            self.fv = first_service
 
-    @PIOC.require('test_service')
-    def do_test(test_service=None):
-        test_service.val = 1
-
-
-    @PIOC.require('test_service')
-    def print_test(test_service=None):
-        print test_service.val
+        def hello(self):
+            print "first_service.val=%s" % self.fv.val
 
 
+    @PIOC.require('first_service')
+    def do_test(first_service=None):
+        first_service.val += 1
+
+
+    @PIOC.require('first_service', 'second_service')
+    def print_test(first_service=None, second_service=None):
+        first_service.val += 1
+        second_service.hello()
+
+
+    do_test()
     print_test()
     do_test()
     print_test()
