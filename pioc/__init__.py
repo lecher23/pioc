@@ -30,6 +30,17 @@ class PIOC(object):
     _mapping = {}
 
     @classmethod
+    def register(cls, service_name, service_inst):
+        if service_name in cls._objects:
+            raise RuntimeError('service %s already exist.' % service_name)
+        logging.info('register service %s', service_name)
+        cls._objects[service_name] = service_inst
+
+    @classmethod
+    def get(cls, service_name):
+        return cls.process_dependency(service_name)[service_name]
+
+    @classmethod
     def process_dependency(cls, *services):
         out = {}
         for service in services:
